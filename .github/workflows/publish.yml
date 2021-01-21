@@ -1,0 +1,32 @@
+name: Publish
+
+on:
+  push:
+    branches:
+      - master
+
+env:
+  IMAGE: docker.pkg.github.com/${{ github.repository }}/appdynamics-kotlin-agent:${{ github.sha }}
+  TZ: Europe/Oslo
+
+jobs:
+  build:
+    name: Build and publish
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/cache@v1
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-maven-cache-${{ hashFiles('pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-cache-
+      - name: Maven package
+        run: mvn clean package
+      - name: Publish docker image
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          docker login docker.pkg.github.com -u ${GITHUB_REPOSITORY} -p ${GITHUB_TOKEN}
+          docker build --tag ${IMAGE} .
+          docker push ${IMAGE}
